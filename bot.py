@@ -14,9 +14,7 @@ from collections import defaultdict
 from contextlib import contextmanager
 from datetime import datetime, timezone
 from pathlib import Path
-from dotenv import load_dotenv
 
-load_dotenv()
 
 import discord
 from discord import app_commands
