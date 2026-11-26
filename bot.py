@@ -21,7 +21,7 @@ from discord import app_commands
 from discord.ext import commands, tasks
 
 TOKEN = os.getenv("DISCORD_TOKEN", "")
-DB_PATH = Path(os.getenv("TUF_DB_PATH", "tuf_indexing.sqlite3"))
+DB_PATH = Path("/tmp/tuf_indexing.sqlite3")
 STAFF_ROLE_IDS = {int(s) for s in os.getenv("TUF_STAFF_ROLE_IDS", "").split(",") if s.strip().isdigit()}
 SESSION_NOTIFY_ROLE_ID = os.getenv("TUF_SESSION_NOTIFY_ROLE_ID", "").strip()
 # Initial mutation names can be edited/extended from the staff panel.
