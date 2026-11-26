@@ -323,11 +323,13 @@ class MainPanel(discord.ui.View):
 
     @discord.ui.button(label="Create Session", emoji="🟢", style=discord.ButtonStyle.success, custom_id="tuf:main:create")
     async def create(self, interaction, button):
+        await interaction.response.defer(ephemeral=True, thinking=True)
         draft = SessionDraft(interaction.user.id)
         await reply(interaction, embed=draft.embed(), view=MutationPicker(draft))
 
     @discord.ui.button(label="Active Sessions", emoji="📋", style=discord.ButtonStyle.primary, custom_id="tuf:main:active")
     async def active(self, interaction, button):
+        await interaction.response.defer(ephemeral=True, thinking=True)
         rows = query("SELECT id, host_id, status FROM sessions WHERE guild_id=? AND status != 'closed' ORDER BY id DESC LIMIT 20", (interaction.guild_id,))
         msg = "\n".join(f"**#{r['id']}** • {r['status']} • <@{r['host_id']}>" for r in rows) or "No active sessions yet."
         await reply(interaction, embed=discord.Embed(title="📋 Active TUF Sessions", description=msg, color=0x8B5CF6), view=BrowseSessions(rows))
@@ -338,6 +340,7 @@ class MainPanel(discord.ui.View):
 
     @discord.ui.button(label="My Sessions", emoji="👤", style=discord.ButtonStyle.secondary, custom_id="tuf:main:mine")
     async def mine(self, interaction, button):
+        await interaction.response.defer(ephemeral=True, thinking=True)
         rows = query("""SELECT DISTINCT s.id, s.host_id, s.status FROM sessions s
             LEFT JOIN participants p ON p.session_id=s.id
             WHERE s.guild_id=? AND (s.host_id=? OR p.user_id=?)
@@ -348,6 +351,7 @@ class MainPanel(discord.ui.View):
 
     @discord.ui.button(label="Closed Session Logs", emoji="📁", style=discord.ButtonStyle.secondary, custom_id="tuf:main:closed")
     async def closed(self, interaction, button):
+        await interaction.response.defer(ephemeral=True, thinking=True)
         rows = query("SELECT id, host_id, status FROM sessions WHERE guild_id=? AND status='closed' ORDER BY id DESC LIMIT 20", (interaction.guild_id,))
         desc = "\n".join(f"**#{r['id']}** • <@{r['host_id']}> • Closed" for r in rows) or "No closed sessions yet."
         await reply(interaction, embed=discord.Embed(title="📁 Closed TUF Indexing Sessions", description=desc, color=0x8B5CF6), view=BrowseSessions(rows))
@@ -1050,6 +1054,8 @@ class CatalogModal(discord.ui.Modal):
 
 
 async def send_catalog(interaction, table, all_items=False, page=0):
+    if not interaction.response.is_done():
+        await interaction.response.defer(ephemeral=True, thinking=True)
     sql = f"SELECT * FROM {table}" + ("" if all_items else " WHERE enabled=1") + " ORDER BY name COLLATE NOCASE"
     rows = query(sql)
     page = max(0, min(page, max(0, (len(rows) - 1) // 35)))
@@ -1380,14 +1386,16 @@ bot.setup_hook = bot_setup_hook
 @app_commands.describe(channel="Channel where closed session summaries are posted")
 async def setup_logs(interaction: discord.Interaction, channel: discord.TextChannel):
     if not staff(interaction.user): return await reply(interaction, "Staff only.")
+    await interaction.response.defer(ephemeral=True, thinking=True)
     execute("INSERT INTO guild_settings(guild_id,logs_channel_id) VALUES (?,?) ON CONFLICT(guild_id) DO UPDATE SET logs_channel_id=excluded.logs_channel_id", (interaction.guild_id, channel.id))
-    await reply(interaction, f"✅ Closed session logs will be posted to {channel.mention}.")
+    await interaction.followup.send(f"✅ Closed session logs will be posted to {channel.mention}.", ephemeral=True)
 
 
 @bot.tree.command(name="setup", description="Post the TUF Indexing Session panel (TUF staff only)")
 @app_commands.guild_only()
 async def setup_command(interaction: discord.Interaction):
     if not staff(interaction.user): return await reply(interaction, "You need Manage Server or a configured TUF staff role.")
+    await interaction.response.defer(ephemeral=True, thinking=True)
     embed = discord.Embed(title="📚 TUF Indexing Session", color=0x8B5CF6,
         description="**Go Up for Brainrots**\n\nHost or join indexing sessions, browse available Brainrots, and select multiple item/mutation combinations in one session.\n\nUse the buttons below to get started.")
     banner = Path(__file__).with_name("tuf_banner.png")
@@ -1396,7 +1404,7 @@ async def setup_command(interaction: discord.Interaction):
         await interaction.channel.send(embed=embed, view=MainPanel(), file=discord.File(banner, filename="tuf_banner.png"))
     else:
         await interaction.channel.send(embed=embed, view=MainPanel())
-    await reply(interaction, "✅ TUF Indexing Session panel posted.")
+    await interaction.followup.send("✅ TUF Indexing Session panel posted.", ephemeral=True)
 
 
 @bot.tree.command(name="setup_guide", description="Post the permanent TUF How to Use guide panel (TUF staff only)")
@@ -1420,10 +1428,11 @@ async def setup_guide(interaction: discord.Interaction):
 @app_commands.guild_only()
 async def setup_management(interaction: discord.Interaction):
     if not staff(interaction.user): return await reply(interaction, "You need Manage Server or a configured TUF staff role.")
+    await interaction.response.defer(ephemeral=True, thinking=True)
     embed = discord.Embed(title="⚙️ TUF Brainrot Management", color=0x8B5CF6,
         description="**Go Up catalog controls**\nAdd, rename, and disable Brainrots, or manage mutations.\n\n🔒 Only authorized staff can use these controls. New names become available without restarting the bot.")
     await interaction.channel.send(embed=embed, view=CatalogPanel())
-    await reply(interaction, "✅ TUF Brainrot Management panel posted. Restrict this channel to staff for privacy.")
+    await interaction.followup.send("✅ TUF Brainrot Management panel posted. Restrict this channel to staff for privacy.", ephemeral=True)
 
 
 if __name__ == "__main__":
